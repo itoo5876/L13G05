@@ -1,0 +1,267 @@
+/* ============================================
+   Custom Quarto HTML Styles - Matching Word Template
+   ============================================ */
+
+/* --- Document Body --- */
+body {
+  font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+  font-size: 13.2pt; /* 11pt * 120% */
+  line-height: 1.5;
+  color: #000000;
+  max-width: 8.5in;
+  margin: 1in auto;
+  padding: 20px;
+  background-color: #dddddd;
+}
+
+/* --- Headings --- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Times New Roman', Times, serif;
+  font-weight: bold;
+  margin-top: 16pt;
+  margin-bottom: 8pt;
+  page-break-after: avoid;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 34px; /* 20px * 170% */
+  color: #2E5090;
+  border-bottom: 2px solid #2E5090;
+  padding-bottom: 6pt;
+  margin-top: 20pt;
+}
+
+h2 {
+  font-size: 30.6px; /* 18px * 170% */
+  color: #2E5090;
+  border-bottom: 2px dotted #2E5090;
+  padding-bottom: 4pt;
+}
+
+h3 {
+  font-size: 27.2px; /* 16px * 170% */
+  color: #1F3864;
+}
+
+h4 {
+  font-size: 23.8px; /* 14px * 170% */
+  color: #1F3864;
+}
+
+h5 {
+  font-size: 20.4px; /* 12px * 170% */
+  color: #000000;
+}
+
+h6 {
+  font-size: 20.4px; /* 12px * 170% */
+  color: #666666;
+  font-style: italic;
+}
+
+/* --- Table of Contents --- */
+#TOC, .toc, #table-of-contents {
+  background-color: #F2F2F2;
+  border: 1px solid #D0D0D0;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+}
+
+#TOC::before, .toc::before {
+  content: "Table of Contents";
+  display: block;
+  font-size: 14pt;
+  font-weight: bold;
+  color: #2E5090;
+  margin-bottom: 10px;
+}
+
+#TOC ul, .toc ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+#TOC li, .toc li {
+  margin-bottom: 4pt;
+  line-height: 1.3;
+}
+
+#TOC a, .toc a {
+  color: #0563C1;
+  text-decoration: none;
+}
+
+#TOC a:hover, .toc a:hover {
+  text-decoration: underline;
+  color: #0451A5;
+}
+
+/* Nested TOC items */
+#TOC ul ul, .toc ul ul {
+  padding-left: 20px;
+  margin-top: 2pt;
+}
+
+/* --- Paragraphs --- */
+p {
+  margin-top: 0;
+  margin-bottom: 8pt;
+  text-align: justify;
+}
+
+/* --- Links --- */
+a {
+  color: #0563C1;
+  text-decoration: underline;
+}
+
+a:visited {
+  color: #954F72;
+}
+
+a:hover {
+  color: #0451A5;
+}
+
+/* --- Lists --- */
+ul, ol {
+  margin-top: 0;
+  margin-bottom: 8pt;
+  padding-left: 30pt;
+}
+
+li {
+  margin-bottom: 4pt;
+}
+
+/* --- Tables --- */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 8pt;
+  margin-bottom: 8pt;
+  font-size: 12pt; /* 10pt * 120% */
+}
+
+thead {
+  background-color: #2E5090;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+th {
+  border: 1px solid #BFBFBF;
+  padding: 6pt 8pt;
+  text-align: left;
+}
+
+td {
+  border: 1px solid #BFBFBF;
+  padding: 6pt 8pt;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #F2F2F2;
+}
+
+tbody tr:hover {
+  background-color: #E7E6E6;
+}
+
+/* --- Code Blocks --- */
+pre {
+  background-color: #F5F5F5;
+  border: 1px solid #CCCCCC;
+  border-left: 3px solid #2E5090;
+  padding: 10pt;
+  overflow-x: auto;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10.8pt; /* 9pt * 120% */
+  line-height: 1.4;
+  margin: 8pt 0;
+}
+
+code {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12pt; /* 10pt * 120% */
+  background-color: #F5F5F5;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* --- Subtitle Emphasis (Context Text) --- */
+.subtitle-emphasis, .context-text {
+  color: #666666;
+  font-style: italic;
+  font-size: 12pt; /* 10pt * 120% */
+  margin-top: 0;
+  margin-bottom: 8pt;
+  line-height: 1.4;
+}
+
+/* Lighter variant for even more subtle context */
+.subtitle-light {
+  color: #888888;
+  font-style: italic;
+  font-size: 11.4pt; /* 9.5pt * 120% */
+}
+
+/* --- Blockquotes --- */
+blockquote {
+  border-left: 4px solid #CCCCCC;
+  margin-left: 0;
+  padding-left: 15pt;
+  color: #666666;
+  font-style: italic;
+}
+
+/* --- Images and Figures --- */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 10pt auto;
+}
+
+figure {
+  margin: 10pt 0;
+  text-align: center;
+}
+
+figcaption {
+  font-size: 10.8pt; /* 9pt * 120% */
+  font-style: italic;
+  color: #666666;
+  margin-top: 4pt;
+}
+
+/* --- Page Break Helpers --- */
+.page-break {
+  page-break-after: always;
+}
+
+/* --- Print Styles --- */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+  }
+  
+  a {
+    text-decoration: none;
+    color: #000000;
+  }
+  
+  #TOC, .toc {
+    border: 1px solid #000000;
+  }
+}

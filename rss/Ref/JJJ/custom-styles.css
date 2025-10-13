@@ -1,0 +1,355 @@
+/* ---------- Tokens ---------- */
+:root{
+  --font-sans: "Calibri","Segoe UI",Arial,sans-serif;
+  --font-serif: "Times New Roman",Times,serif;
+  --font-mono: Consolas,"Courier New",monospace;
+
+  --fs-base: 1rem;            /* 16px */
+  --fs-sm: 0.875rem;          /* 14px */
+  --fs-xs: 0.8125rem;         /* 13px */
+  --lh-base: 1.5;
+
+  --h1: 2rem;                 /* 32px */
+  --h2: 1.75rem;              /* 28px */
+  --h3: 1.5rem;               /* 24px */
+  --h4: 1.375rem;             /* 22px */
+  --h5: 1.25rem;              /* 20px */
+  --h6: 1.125rem;             /* 18px */
+
+  --c-text: #000;
+  --c-muted: #666;
+  --c-link: #0563C1;
+  --c-link-hover:#0451A5;
+  --c-accent:#2E5090;
+  --c-bg: #dddddd;               /* keep white for readability */
+  --c-bg-alt: #f8f9fa;
+  --c-border:#BFBFBF;
+
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --toc-w: 280px;
+}
+
+/* ---------- Base ---------- */
+html { font-size: 16px; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+  color: var(--c-text);
+  background: var(--c-bg);
+  margin: 0;
+}
+
+/* ---------- Layout ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 0 1fr;              /* expands to two cols when TOC is present */
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.has-toc .layout {
+  grid-template-columns: var(--toc-w) 1fr;
+}
+
+.layout__sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow: auto;
+  padding: var(--space-4) var(--space-3);
+  background: var(--c-bg-alt);
+  border-right: 2px solid var(--c-accent);
+  box-shadow: 2px 0 5px rgba(0,0,0,.05);
+}
+
+/* Quarto TOC acts like .layout__sidebar */
+#TOC {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow: auto;
+  padding: var(--space-4) var(--space-3);
+  background: var(--c-bg-alt);
+  border-right: 2px solid var(--c-accent);
+  box-shadow: 2px 0 5px rgba(0,0,0,.05);
+  font-size: var(--fs-sm);
+}
+
+/* Mobile TOC strip style */
+@media (max-width: 1024px){
+  #TOC {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 2px solid var(--c-accent);
+    box-shadow: none;
+  }
+}
+
+
+
+.layout__main {
+  padding: var(--space-5) var(--space-6);
+  max-width: 1100px;
+}
+
+/* Quarto main content acts like .layout__main + .prose */
+main.content {
+  padding: var(--space-5) var(--space-6);
+  max-width: 1100px;
+}
+
+/* Typography & components previously under .prose */
+main.content h1, main.content h2, main.content h3,
+main.content h4, main.content h5, main.content h6 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: var(--space-5) 0 var(--space-3);
+}
+main.content h1 { font-size: var(--h1); color: var(--c-accent); border-bottom: 2px solid var(--c-accent); padding-bottom: var(--space-2); }
+main.content h2 { font-size: var(--h2); color: var(--c-accent); border-bottom: 1px dotted var(--c-accent); padding-bottom: var(--space-1); }
+main.content h3 { font-size: var(--h3); color: #1F3864; }
+main.content h4 { font-size: var(--h4); color: #1F3864; }
+main.content h5 { font-size: var(--h5); }
+main.content h6 { font-size: var(--h6); color: var(--c-muted); font-style: italic; }
+
+main.content p { margin: 0 0 var(--space-3); text-align: justify; }
+main.content a { color: var(--c-link); }
+main.content a:hover { color: var(--c-link-hover); }
+
+main.content ul, main.content ol { margin: 0 0 var(--space-3); padding-left: 1.5rem; }
+main.content li { margin-bottom: var(--space-1); }
+
+main.content blockquote {
+  border-left: 4px solid #ccc;
+  padding-left: var(--space-3);
+  color: var(--c-muted);
+  font-style: italic;
+  margin: var(--space-4) 0;
+}
+
+/* Tables */
+main.content table { border-collapse: collapse; width: 100%; margin: var(--space-3) 0; font-size: var(--fs-sm); }
+main.content thead { background: var(--c-accent); color: #fff; }
+main.content th, main.content td { border: 1px solid var(--c-border); padding: 0.4rem 0.5rem; text-align: left; }
+main.content tbody tr:nth-child(even){ background: #F2F2F2; }
+
+/* Code */
+main.content pre {
+  background: #F5F5F5;
+  border: 1px solid #CCC;
+  border-left: 3px solid var(--c-accent);
+  padding: var(--space-3);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: var(--space-3) 0;
+}
+main.content code {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  background: #F5F5F5;
+  padding: 0 .25rem;
+  border-radius: 2px;
+}
+
+/* Media */
+main.content img { max-width: 100%; height: auto; display: block; margin: var(--space-3) auto; }
+main.content figure { margin: var(--space-3) 0; text-align: center; }
+main.content figcaption { font-size: var(--fs-xs); color: var(--c-muted); margin-top: var(--space-1); }
+
+/* Mobile padding */
+@media (max-width: 1024px){
+  main.content { padding: var(--space-4); }
+}
+
+
+
+
+/* Quarto wrapper acts like .layout */
+#quarto-content { display: block; }
+
+/* When a TOC exists, switch to two-column layout */
+body:has(#TOC) #quarto-content {
+  display: grid;
+  grid-template-columns: var(--toc-w) 1fr; /* same as .has-toc .layout */
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* Mobile collapse */
+@media (max-width: 1024px){
+  body:has(#TOC) #quarto-content { grid-template-columns: 1fr; }
+}
+
+
+
+
+/* Bind Quarto's #TOC if present */
+#TOC { /* keep visuals light; no !important */
+  font-size: var(--fs-sm);
+}
+#TOC ul { list-style: none; padding-left: var(--space-2); margin: 0; }
+#TOC a { text-decoration: none; color: var(--c-link); display: block; padding: var(--space-1) var(--space-2); border-radius: 4px; }
+#TOC a:hover { background: #e3f2fd; color: var(--c-link-hover); }
+
+/* ---------- Typography in content ---------- */
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: var(--space-5) 0 var(--space-3);
+}
+
+.prose h1 { font-size: var(--h1); color: var(--c-accent); border-bottom: 2px solid var(--c-accent); padding-bottom: var(--space-2); }
+.prose h2 { font-size: var(--h2); color: var(--c-accent); border-bottom: 1px dotted var(--c-accent); padding-bottom: var(--space-1); }
+.prose h3 { font-size: var(--h3); color: #1F3864; }
+.prose h4 { font-size: var(--h4); color: #1F3864; }
+.prose h5 { font-size: var(--h5); }
+.prose h6 { font-size: var(--h6); color: var(--c-muted); font-style: italic; }
+
+.prose p { margin: 0 0 var(--space-3); text-align: justify; }
+.prose a { color: var(--c-link); }
+.prose a:hover { color: var(--c-link-hover); }
+
+.prose ul, .prose ol { margin: 0 0 var(--space-3); padding-left: 1.5rem; }
+.prose li { margin-bottom: var(--space-1); }
+
+.prose blockquote {
+  border-left: 4px solid #ccc;
+  padding-left: var(--space-3);
+  color: var(--c-muted);
+  font-style: italic;
+  margin: var(--space-4) 0;
+}
+
+
+/* --- robust 2-col mapping for Quarto + TOC --- */
+
+/* 1) Make the wrapper a grid when a TOC exists */
+body:has(#TOC) #quarto-content {
+  display: grid;
+  grid-template-columns: minmax(220px, var(--toc-w)) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* 2) Force TOC into column 1 (handle both nav#TOC and #TOC) */
+body:has(#TOC) #quarto-content > :is(nav#TOC, #TOC, .quarto-margin-sidebar) {
+  grid-column: 1;
+  /* Avoid overlay stacking over content */
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow: auto;
+  z-index: 1;           /* keep it above backgrounds but below any modals */
+  background: var(--c-bg-alt);
+  border-right: 2px solid var(--c-accent);
+  box-shadow: 2px 0 5px rgba(0,0,0,.05);
+  font-size: var(--fs-sm);
+  padding: var(--space-4) var(--space-3);
+  box-sizing: border-box;
+}
+
+/* 3) Force main content into column 2 (catch common Quarto variants) */
+body:has(#TOC) #quarto-content > :is(main.content, main, .content, .quarto-container) {
+  grid-column: 2;
+  min-width: 0;         /* prevent grid overflow that can push it under the TOC */
+  position: relative;   /* new stacking context, avoids being hidden under sticky */
+  z-index: 0;
+  padding: var(--space-5) var(--space-6);
+  max-width: 1100px;
+  box-sizing: border-box;
+}
+
+/* 4) In case Quarto nests things one level deeper, descend one level */
+body:has(#TOC) #quarto-content > * > :is(main.content, main, .content) {
+  grid-column: 2;
+  min-width: 0;
+}
+
+/* 5) Make sure TOC list is well-behaved (no giant hitbox) */
+#TOC ul { list-style: none; padding-left: var(--space-2); margin: 0; }
+#TOC li { margin: 0; }
+#TOC a { display: block; padding: var(--space-1) var(--space-2); text-decoration: none; color: var(--c-link); border-radius: 4px; }
+#TOC a:hover { background: #e3f2fd; color: var(--c-link-hover); }
+
+/* 6) Mobile: collapse to single column safely */
+@media (max-width: 1024px){
+  body:has(#TOC) #quarto-content { grid-template-columns: 1fr; }
+  body:has(#TOC) #quarto-content > :is(nav#TOC, #TOC, .quarto-margin-sidebar) {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 2px solid var(--c-accent);
+    box-shadow: none;
+  }
+  body:has(#TOC) #quarto-content > :is(main.content, main, .content, .quarto-container) {
+    padding: var(--space-4);
+  }
+}
+
+/* 7) Print: hide the TOC, show clean content */
+@media print {
+  #quarto-content { display: block !important; }
+  :is(nav#TOC, #TOC, .quarto-margin-sidebar) { display: none !important; }
+  :is(main.content, main, .content) { padding: 0 !important; max-width: none !important; }
+}
+
+
+/* Tables */
+.prose table { border-collapse: collapse; width: 100%; margin: var(--space-3) 0; font-size: var(--fs-sm); }
+.prose thead { background: var(--c-accent); color: #fff; }
+.prose th, .prose td { border: 1px solid var(--c-border); padding: 0.4rem 0.5rem; text-align: left; }
+.prose tbody tr:nth-child(even){ background: #F2F2F2; }
+
+/* Code */
+.prose pre {
+  background: #F5F5F5;
+  border: 1px solid #CCC;
+  border-left: 3px solid var(--c-accent);
+  padding: var(--space-3);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: var(--space-3) 0;
+}
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  background: #F5F5F5;
+  padding: 0 .25rem;
+  border-radius: 2px;
+}
+
+/* Images */
+.prose img { max-width: 100%; height: auto; display: block; margin: var(--space-3) auto; }
+.prose figure { margin: var(--space-3) 0; text-align: center; }
+.prose figcaption { font-size: var(--fs-xs); color: var(--c-muted); margin-top: var(--space-1); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1024px){
+  .has-toc .layout { grid-template-columns: 1fr; }
+  .layout__sidebar { position: static; height: auto; border-right: none; border-bottom: 2px solid var(--c-accent); box-shadow: none; }
+  .layout__main { padding: var(--space-4); }
+}
+
+/* ---------- Print ---------- */
+@media print{
+  #quarto-content { display: block !important; }
+  #TOC { display: none !important; }
+  main.content { padding: 0 !important; max-width: none !important; }
+  a { text-decoration: none; color: inherit; }
+}
+
