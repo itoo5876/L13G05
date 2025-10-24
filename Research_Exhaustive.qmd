@@ -1,6 +1,6 @@
 ---
-title: "v02"
-format: docx
+title: "exhaustSearchAttempt"
+format: html
 editor: visual
 ---
 
@@ -490,3 +490,67 @@ tidy(best_mod) %>%
   mutate(term = stringr::str_replace_all(term, ":", " × ")) %>%
   print(n = Inf)
 ```
+
+
+# 8) Exhaustive (best-subset) search
+
+## ---- 8-1) init
+
+```{r}
+# --- prepare model frame ---
+df_exh <- df  # the same pruned dataset used in stepwise
+y <- df_exh$G3
+X <- df_exh[, setdiff(names(df_exh), "G3"), drop = FALSE]
+
+# --- exhaustive subset selection ---
+exh_fit <- regsubsets(
+  x = X,
+  y = y,
+  nbest = 1,      # keep top model per subset size
+  nvmax = 15,     # limit to best 15 predictors for feasibility
+  method = "exhaustive"
+)
+
+# --- summary output ---
+exh_summary <- summary(exh_fit)
+
+# Visualize adjusted R² and BIC/AIC-like scores
+plot(exh_summary$adjr2, type = "b", xlab = "Number of predictors", ylab = "Adjusted R²")
+plot(exh_summary$bic, type = "b", xlab = "Number of predictors", ylab = "BIC")
+
+```
+
+
+## ---- 8-2) Extract the Best Model by Criterion
+```{r}
+best_adjr2_idx <- which.max(exh_summary$adjr2)
+best_bic_idx   <- which.min(exh_summary$bic)
+
+cat("Best Adjusted R² model:", best_adjr2_idx, "\n")
+cat("Best BIC model:", best_bic_idx, "\n")
+
+# coefficients for best BIC model
+coef_best_bic <- coef(exh_fit, best_bic_idx)
+print(coef_best_bic)
+
+# fit final lm model for diagnostics
+form_exh <- as.formula(paste("G3 ~", paste(names(coef_best_bic)[-1], collapse = " + ")))
+fit_exhaustive <- lm(form_exh, data = df_exh)
+summary(fit_exhaustive)
+
+```
+
+## ---- 8-3) Compare with Stepwise Models
+```{r}
+model_summ(fit_exhaustive)
+
+rbind(
+  AIC_both = model_summ(step_aic_both),
+  AIC_back = model_summ(step_aic_back),
+  BIC_both = model_summ(step_bic_both),
+  BIC_back = model_summ(step_bic_back),
+  Exhaustive_BIC = model_summ(fit_exhaustive)
+)
+
+```
+
