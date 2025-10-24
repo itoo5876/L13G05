@@ -1,0 +1,535 @@
+---
+title: "exhaustSearchAttempt"
+format: html
+editor: visual
+---
+
+# 0) Env Init
+
+```{r setup, include=FALSE, message = FALSE}
+# Load essential libraries
+library(tidyverse)   # for data manipulation and ggplot2 visualization
+library(skimr)       # for quick summary statistics
+library(psych)       # for descriptive stats
+library(GGally)      # for pairwise plots
+library(corrplot)    # for correlation visualization
+library(naniar)      # for missing data visualization
+
+# --- Reduced-variable construction ---
+library(dplyr)
+library(stringr)
+library(fastDummies)
+
+# --- forward/backward stepwise ---
+library(dplyr)
+library(caret)
+library(MASS)
+library(lmtest)
+library(sandwich)
+
+library(margins)
+library(ggplot2)
+library(broom)
+
+# --- exhaustive ---
+
+if (!requireNamespace("leaps", quietly = TRUE)) install.packages("leaps")
+library(leaps)
+
+# --- func ---
+
+# 1) Define a simple winsorize helper
+winsorize <- function(x, p = c(0.01, 0.99), type = 7) {
+  stopifnot(is.numeric(x), length(p) == 2)
+  qs <- stats::quantile(x, probs = p, na.rm = TRUE, type = type, names = FALSE)
+  x <- pmax(x, qs[1])
+  x <- pmin(x, qs[2])
+  x
+}
+```
+
+# 00) Data Init
+
+```{r}
+# Load data
+student_data <- read.csv("rss/DATA_RAW/student-por.csv", sep = ";")
+
+# Select numeric columns
+numeric_vars <- select_if(student_data, is.numeric)
+
+# Count and proportion for each categorical variable
+categorical_vars <- select_if(student_data, is.character)
+```
+
+# 1) Overview
+
+## ---- 1-0) reduce into var'o'interest
+
+```{r}
+# Dataset summary
+# --- Reduced-variable construction -------------------------------------------
+library(dplyr)
+library(stringr)
+
+df_reduced <- student_data %>%
+  mutate(
+    # 1) Binary recodes (0/1)
+    school_bin   = ifelse(school  == "GP", 1L, 0L),    # GP vs MS
+    address_bin  = ifelse(address == "U",  1L, 0L),    # Urban vs Rural
+    famsize_bin  = ifelse(famsize == "GT3",1L, 0L),    # >3 vs ≤3
+    pcohabit_bin = ifelse(Pstatus == "T",  1L, 0L),    # Together vs Apart
+    internet_bin = ifelse(internet == "yes", 1L, 0L),  # home internet in UCI data
+    schoolsup_bin= ifelse(schoolsup == "yes",1L, 0L),
+    famsup_bin   = ifelse(famsup   == "yes",1L, 0L),
+    paid_bin     = ifelse(paid     == "yes",1L, 0L),
+    nursery_bin  = ifelse(nursery  == "yes",1L, 0L),
+
+    # 2) Parent Education (numeric) — mean of mother & father education
+    parentEdu = (as.numeric(Medu) + as.numeric(Fedu)) / 2,
+
+    # 3) Total Alcohol Consumption (numeric)
+    total_alcohol = as.numeric(Dalc) + as.numeric(Walc),
+
+    # 4) Parent Jobs (Nominal): combine Mjob + Fjob into one nominal field
+    parent_jobs = interaction(Mjob, Fjob, sep = "_", drop = TRUE)
+  ) %>%
+  # 5) Keep only variables requested + outcome G3
+  transmute(
+    # ---- Categorical (as requested)
+    school_bin,                  # School (Binary)
+    address_bin,                 # Address (Binary Urban/Rural)
+    famsize_bin,                 # Family Size (Binary)
+    pcohabit_bin,                # Parent Cohabitation Status (Binary)
+    parent_jobs,                 # Parent Jobs (Nominal)
+    internet_bin,                # Internet Access (Binary)  [= home in this dataset]
+    schoolsup_bin,               # School Support (Binary)
+    famsup_bin,                  # Family Education Support (Binary)
+    paid_bin,                    # Extra Paid Classes (Binary)
+    nursery_bin,                 # Attended Nursery School (Binary)
+    internet_home_bin = internet_bin, # Internet Access at home (Binary) — same source
+
+    # ---- Numeric (as requested)
+    parentEdu,                   # Parent Education (numeric)
+    famrel,                      # Quality of family relationships
+    freetime,                    # Free Time
+    health,                      # Health
+    total_alcohol,               # Total Alcohol Consumption
+
+    # ---- Outcome (keep for modeling)
+    G3
+  )
+
+# Make sure "parent_jobs" is a factor (nominal)
+df_reduced <- df_reduced %>%
+  mutate(parent_jobs = as.factor(parent_jobs))
+
+
+
+```
+
+## ---- 1-1) Basic Overview
+
+```{r}
+str(df_reduced)
+summary(df_reduced)
+
+dim(df_reduced)
+colSums(is.na(df_reduced))
+
+```
+
+## ---- 1-2) Numeric Variables: Centrality, Spread, Skewness
+
+```{r}
+# Descriptive statistics for numeric variables
+psych::describe(numeric_vars)
+
+# Correlation matrix
+cor_mat <- cor(numeric_vars)
+corrplot::corrplot(cor_mat, method = "color", type = "upper",
+                   tl.cex = 0.7, title = "Numeric Variable Correlations",
+                   mar = c(0, 0, 2, 0))
+
+# Distribution inspection
+numeric_vars %>%
+  pivot_longer(everything()) %>%
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 30, fill = "skyblue", color = "black") +
+  facet_wrap(~ name, scales = "free") +
+  theme_minimal() +
+  labs(title = "Distribution of Numeric Variables")
+
+```
+
+## ---- 1-3) Categorical Variables: Balance and Association
+
+```{r}
+# Summary of categorical distributions
+categorical_summary <- categorical_vars %>%
+  summarise_all(~n_distinct(.)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "unique_levels")
+
+categorical_summary
+
+# Frequency plots
+categorical_vars %>%
+  pivot_longer(everything()) %>%
+  ggplot(aes(x = value, fill = value)) +
+  geom_bar(show.legend = FALSE) +
+  facet_wrap(~ name, scales = "free") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Distribution of Categorical Variables")
+
+# Chi-square associations with G3 (converted to factor)
+cat_g3_assoc <- lapply(names(categorical_vars), function(var) {
+  tbl <- table(student_data[[var]], student_data$G3)
+  chisq <- suppressWarnings(chisq.test(tbl))
+  data.frame(var = var, p_value = chisq$p.value)
+}) %>% bind_rows()
+
+cat_g3_assoc %>% arrange(p_value)
+
+```
+
+```{r}
+# SES index from averaged parental education
+student_data <- df_reduced %>%
+  mutate(SES_index = scale(parentEdu))
+
+# Quick check of SES vs G3
+ggplot(student_data, aes(x = SES_index, y = G3)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", color = "blue") +
+  theme_minimal() +
+  labs(
+    title = "Relationship between SES Index and Final Grade (G3)",
+    x = "Standardized SES Index",
+    y = "Final Grade"
+  )
+```
+
+```{r}
+# Check for outliers
+boxplot(scale(numeric_vars), main = "Boxplot of Standardized Numeric Variables")
+
+# Z-score summary for extreme values
+apply(scale(numeric_vars), 2, function(x) sum(abs(x) > 3))
+
+```
+
+# 2) transformation
+
+## ---- 2-0) Packages ----
+
+```{r}
+## ---- 0) Packages ----
+pkgs <- c("dplyr","tidyr","ggplot2","fastDummies","stringr","broom","car","DescTools")
+to_install <- setdiff(pkgs, rownames(installed.packages()))
+if (length(to_install)) install.packages(to_install, quiet = TRUE)
+invisible(lapply(pkgs, library, character.only = TRUE))
+
+set.seed(2025)
+
+```
+
+## ---- 2-1) Base typing: numeric vs categorical ----
+
+```{r}
+## ---- 1) Base typing: numeric vs categorical ----
+# Ensure characters become factors (we keep numeric as is)
+student_data <- student_data %>%
+  mutate(across(where(is.character), as.factor))
+```
+
+## ---- 2-2) SES features ----
+
+```{r}
+## ---- 2) SES features ----
+# 2.1 Additive SES and standardized version (education-only proxy)
+student_data <- student_data %>%
+  mutate(
+    SES_raw = parentEdu,                 # parentEdu already = (Medu + Fedu)/2
+    SES_z   = as.numeric(scale(SES_raw)) # z-score
+  )
+
+# 2.2 PCA SES using reduced SES-related fields
+# Choose SES-ish features available in df_reduced:
+#   parentEdu (num), address_bin, pcohabit_bin, famsize_bin, internet_bin (bin),
+#   parent_jobs (nominal -> dummies)
+ses_pca_vars <- c(
+  "parentEdu", "address_bin", "pcohabit_bin", "famsize_bin",
+  "internet_bin", "parent_jobs"
+)
+
+# Subset and ensure factor for nominal
+pca_df <- student_data[, ses_pca_vars]
+pca_df$parent_jobs <- as.factor(pca_df$parent_jobs)
+
+# Dummy encode parent_jobs only (keep other binaries as-is)
+ses_dum <- fastDummies::dummy_cols(
+  pca_df,
+  select_columns = "parent_jobs",
+  remove_first_dummy = TRUE,
+  remove_selected_columns = TRUE
+)
+
+# Drop any constant (zero-variance) columns before PCA (can happen after dummying)
+is_const <- vapply(ses_dum, function(x) sd(as.numeric(x), na.rm = TRUE) == 0, logical(1))
+if (any(is_const)) ses_dum <- ses_dum[, !is_const, drop = FALSE]
+
+# Run PCA on standardized matrix
+ses_mat <- scale(as.matrix(ses_dum))
+ses_pca <- prcomp(ses_mat, center = TRUE, scale. = TRUE)
+
+# First principal component as SES proxy, standardized for interpretability
+student_data$SES_pca1 <- as.numeric(scale(ses_pca$x[, 1]))
+```
+
+## ---- 2-3) “effort/behavior” transforms (keep originals) ----
+
+```{r}
+# Uses only variables that exist in df_reduced
+student_data <- student_data %>%
+  mutate(
+    # We no longer have Dalc/Walc separately; use the combined metric
+    total_alcohol_log = log(total_alcohol),     # safe since total_alcohol = Dalc + Walc ∈ [2,10]
+    alcohol_use       = total_alcohol / 2,      # back to average of Dalc and Walc
+    # Optional binary indicator for high alcohol use (tweak threshold if needed)
+    alcohol_high      = as.integer(total_alcohol >= 6)
+  )
+
+```
+
+## ---- 2-4) Optional Winsorization for heavy tails (kept as \*\_win) ----
+
+```{r}
+student_data <- student_data %>%
+  mutate(
+    total_alcohol_win = winsorize(total_alcohol, p = c(0.01, 0.99))
+  )
+
+summary(student_data[, c("total_alcohol","total_alcohol_win")])
+
+```
+
+## ---- 2-5) Z-scales for interaction-ready predictors (kept as \*\_z) ----
+
+```{r}
+zscale <- function(x) as.numeric(scale(x))
+
+student_data <- student_data %>%
+  mutate(
+    parentEdu_z         = zscale(parentEdu),
+    famrel_z            = zscale(famrel),
+    freetime_z          = zscale(freetime),
+    health_z            = zscale(health),
+    total_alcohol_z     = zscale(total_alcohol),
+    total_alcohol_log_z = zscale(total_alcohol_log),
+    SES_raw_z           = zscale(SES_raw),    # already defined in the SES chunk
+    SES_pca1_z          = zscale(SES_pca1)    # if you plan to try PCA-SES in interactions
+  )
+
+glimpse(student_data)
+```
+
+## ---- 2-6) Categorical encoding (dummies) ----
+
+```{r}
+# Only nominal variable needing dummies now is parent_jobs.
+# Binary *_bin variables are already numeric and can be kept as-is.
+
+
+cat_vars <- c("parent_jobs")  # keep minimal and explicit
+
+student_dum <- fastDummies::dummy_cols(
+  student_data,
+  select_columns = cat_vars,
+  remove_selected_columns = TRUE,
+  remove_first_dummy = TRUE  # avoid perfect collinearity
+)
+
+glimpse(student_dum)
+```
+
+## ---- 2-7) Interaction scaffolds (kept; you can expand later) ----
+
+```{r}
+# Replace obsolete interactions (SES × studytime) with ones that exist:
+# Examples: SES with free time and health; also try with alcohol.
+student_dum <- student_dum %>%
+  mutate(
+    SESxFreeTime     = SES_z * freetime_z,
+    SESxHealth       = SES_z * health_z,
+    SESxAlcohol      = SES_z * total_alcohol_z,
+    SESpca1xFreeTime = SES_pca1_z * freetime_z
+  )
+
+```
+
+## ---- 2-8) Two modeling frames ----
+
+```{r}
+# (a) Core model frame (no G1/G2)
+drop_grades <- c("G1","G2")
+core_keep   <- setdiff(names(student_dum), drop_grades)
+# base R subsetting; preserves column order and avoids dplyr
+model_core  <- student_dum[, core_keep, drop = FALSE]
+
+# sanity check
+stopifnot("G3" %in% names(model_core))
+str(model_core[1:5])
+
+# (b) Extended frame WITH G1/G2 (if you want it):
+model_with_grades <- student_dum   # nothing to drop
+
+```
+
+# 3) Build a pruned modeling matrix (no leakage; robust to dummies)
+
+## ---- 3-1)Recreate the pruned modeling matrix
+
+```{r}
+# Start from core frame (no G1/G2)
+df0 <- model_core
+
+# Drop twins; keep z-versions (and/or SES_pca1)
+drop_families <- c(
+  "studytime","studytime_log",
+  "absences_log",
+  "failures_log",
+  "alcohol_use",
+  "SES_raw","SES_raw_z","SES_index"
+)
+df0 <- df0[, setdiff(names(df0), drop_families), drop = FALSE]
+
+# Optional: drop near-constant factor dummies (stabilises fits)
+if ("higher_yes" %in% names(df0)) {
+  df0 <- df0[, setdiff(names(df0), "higher_yes"), drop = FALSE]
+}
+
+# Keep SESxStudy; drop SESxStudyLog if present
+df0 <- df0[, setdiff(names(df0), "SESxStudyLog"), drop = FALSE]
+
+# Build design matrix (no intercept) and prune
+if (!requireNamespace("caret", quietly = TRUE)) install.packages("caret")
+library(caret)
+
+X <- model.matrix(G3 ~ ., data = df0)[, -1, drop = FALSE]
+
+nzv <- caret::nearZeroVar(X)
+if (length(nzv)) X <- X[, -nzv, drop = FALSE]
+
+lc <- caret::findLinearCombos(X)
+if (!is.null(lc$remove)) X <- X[, -lc$remove, drop = FALSE]
+
+# Final modeling data
+df <- data.frame(G3 = df0$G3, X)
+str(df)
+```
+
+## ---- 3-2) Fit the model and compute VIFs safely
+
+```{r}
+# Fit full model on pruned matrix
+fit_core3 <- lm(G3 ~ ., data = df)
+
+# Robust VIF (handles aliased terms)
+safe_vif <- function(model) {
+  aliased <- is.na(coef(model))
+  if (any(aliased)) {
+    keep_terms <- setdiff(names(aliased)[!aliased], "(Intercept)")
+    message("Dropped ", sum(aliased), " aliased terms before VIF computation.")
+    form <- as.formula(paste("G3 ~", paste(keep_terms, collapse = " + ")))
+    model <- lm(form, data = model$model)
+  }
+  car::vif(model)
+}
+
+vif_tbl <- safe_vif(fit_core3)
+sort(vif_tbl, decreasing = TRUE)[1:25]
+
+```
+
+## ---- 3-3) Shortcut for lose the matrix step
+
+```{r}
+fit_full <- lm(G3 ~ ., data = df0)
+ali <- is.na(coef(fit_full))
+keep_terms <- setdiff(names(ali)[!ali], "(Intercept)")
+fit_reduced <- lm(as.formula(paste("G3 ~", paste(keep_terms, collapse=" + "))), data = df0)
+safe_vif(fit_reduced)
+```
+
+# 4) Forward / Backward stepwise (AIC & BIC)
+
+```{r}
+
+# Null and Full
+null_mod <- lm(G3 ~ 1, data = df)
+full_mod <- lm(G3 ~ ., data = df)
+
+# AIC stepwise (both directions from null → full)
+step_aic_both <- stepAIC(null_mod,
+                         scope = list(lower = ~1, upper = formula(full_mod)),
+                         direction = "both", trace = FALSE)
+
+# Backward (AIC) from full
+step_aic_back <- stepAIC(full_mod, direction = "backward", trace = FALSE)
+
+# BIC versions (penalize complexity more): k = log(n)
+n <- nrow(df)
+step_bic_both <- stepAIC(null_mod,
+                         scope = list(lower = ~1, upper = formula(full_mod)),
+                         direction = "both", k = log(n), trace = FALSE)
+step_bic_back <- stepAIC(full_mod, direction = "backward", k = log(n), trace = FALSE)
+
+# Compare quick stats
+model_summ <- function(m) {
+  c(k = length(coef(m))-1,
+    adjR2 = summary(m)$adj.r.squared,
+    AIC = AIC(m), BIC = BIC(m))
+}
+rbind(
+  AIC_both = model_summ(step_aic_both),
+  AIC_back = model_summ(step_aic_back),
+  BIC_both = model_summ(step_bic_both),
+  BIC_back = model_summ(step_bic_back)
+)
+
+```
+
+# 5) Diagnostics on chosen model
+
+```{r}
+
+best_mod <- step_bic_both  # or step_aic_both / step_bic_back / step_aic_back
+
+summary(best_mod)
+
+# Residual diagnostics
+par(mfrow = c(2,2)); plot(best_mod); par(mfrow = c(1,1))
+
+# Heteroskedasticity (Breusch–Pagan)
+if (!requireNamespace("lmtest", quietly = TRUE)) install.packages("lmtest")
+if (!requireNamespace("sandwich", quietly = TRUE)) install.packages("sandwich")
+
+bptest(best_mod)
+
+# Robust (HC3) SEs if needed
+coeftest(best_mod, vcov. = vcovHC(best_mod, type = "HC3"))
+
+```
+# 6) is dropped, if needed see research 01
+
+
+# 7) Clean coefficient table (publishable)
+
+```{r}
+if (!requireNamespace("broom", quietly = TRUE)) install.packages("broom")
+
+tidy(best_mod) %>%
+  arrange(p.value) %>%
+  mutate(term = stringr::str_replace_all(term, ":", " × ")) %>%
+  print(n = Inf)
+```
